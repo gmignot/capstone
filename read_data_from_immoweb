@@ -1,0 +1,42 @@
+from selenium import webdriver
+from bs4 import BeautifulSoup
+import pandas as pd
+
+url = "https://www.immoweb.be/en/Global.Estate.cfm?IdBien=7341266"
+
+driver = webdriver.Chrome(executable_path="chromedriver")
+driver.get(url)
+content_element = driver.find_element_by_id("iw-propertypage-verticals")
+content_html = content_element.get_attribute("innerHTML")
+
+soup = BeautifulSoup(content_html, "html.parser")
+tag = soup.find_all('table')
+        
+driver.close()
+
+all_list = []
+all_completed = []
+
+#listing all elements found in a list of lists, with next to the element the tag it's related to
+for row in soup.find_all(['th','td','tr'],{'class':['iw-propertypage-verticals-characteristic-label','iw-propertypage-verticals-characteristic-value','integrated-service-link']}):
+    all_list.append([row.name,(row.text.strip('\n')).strip()])
+    
+#I know all names (col names) are with a th tag. So if two th tags are next to each other I need to introduce an empty string!
+
+#store first tag as 'td' so that it does not find a mistake on first title which is 'th' tag
+initial = 'td'
+for i in all_list:
+    if i[0] == initial:
+        all_completed.append(['td',''])
+        all_completed.append(i)
+        initial='th'
+    else:
+        all_completed.append(i)
+        initial=i[0]
+        
+#Now that I have my list with pairs (th-td or th-tr), I can split it and create a table.
+colnames = [all_completed[i][1] for i in range(0,len(all_completed),2)]
+values = [all_completed[i][1] for i in range(1,len(all_completed),2)]
+
+house_info = pd.DataFrame([values],columns=colnames)
+house_info
